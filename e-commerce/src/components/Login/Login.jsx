@@ -1,12 +1,32 @@
 import {React,useState} from "react";
 import {AiOutlineEye, AiOutlineEyeInvisible} from "react-icons/ai"
 import styles from "../../styles/styles"
+import axios from "axios";
+import {server} from "../../server";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 
 function LoginPage() {
+    const Navigate=useNavigate();
     const [email,setEmail]=useState('');
     const [password,setPassword]=useState('');
     const [isVisible,setVisible]=useState('false');
+    const handleSubmit=async(e)=>{
+      e.preventDefault();
+      await axios.post(`${server}/user/login-user`,{
+        email,
+        password
+      })
+      .then(res=>{
+        toast.success("login successfull");
+        Navigate("/")
+      }).catch(err=>{
+        toast.error(err.response.data.message);
+      })
+
+    }
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col py-12 sm:px-6 ls:px-8">
 
@@ -21,7 +41,7 @@ function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4  shadow sm:rounded-lg sm:px-10 ">
-          <form action="" className="space-y-6">
+          <form action="" className="space-y-6" onSubmit={handleSubmit}>
 
             {/* email input */}
             <div>

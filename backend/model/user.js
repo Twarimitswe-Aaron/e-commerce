@@ -1,16 +1,21 @@
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+dotenv.config({path:'./config/.env'});
 
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: [true, "Please enter your name"],
+        trim:true,
+        maxLength: [50, "Name cannot exceed 50 characters"],
     },
     email: {
         type: String,
         required: [true, "Please enter your email"],
         unique: true,
+        trim:true,
     },
     password: {
         type: String,
@@ -21,40 +26,52 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         default: "User",
+        enum: ["User", "Admin"],
     },
     avatar: {
         type: String,
         unique: true,
+        required: true,
     },
     createdAt: {
         type: Date,
         default: Date.now,
     },
+    isActive:{
+        type:Boolean,
+        default:false,
+    },activationTokenExpire:{
+        type:Date,
+        default:function (){return Date.now()+6*60*1000}, 
+    }
+
 });
 
-// Hash the password before saving the user
+userSchema.index({activationTokenExpire:1}, {expireAfterSeconds:0, partialFilterExpression:{isActive:false}});
+
 userSchema.pre("save", async function (next) {
-    // Only hash the password if it has been modified (or is new)
+    
     if (!this.isModified("password")) {
         return next();
     }
 
-    // Hash the password with a salt round of 10
-    this.password = await bcrypt.hash(this.password, 10);
+
+    this.password = await bcrypt.hash(this.password, 12);
     next();
 });
 
-// Compare the entered password with the hashed password
-userSchema.methods.comparePassword = async function (enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password);
+userSchema.methods.comparePassword = async function (password) {
+    return await bcrypt.compare(password, this.password);
 };
 
-// Generate a JWT token for the user
-userSchema.methods.getJWTToken = function () {
-    return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRE,
-    });
-};
+userSchema.methods.getJwtToken = function () {
+    return jwt.sign({id:this._id}, process.env.JWT_SECRET, {
+        expiresIn:process.env.JWT_SECRET_EXPIRY,
+    })
+}
+
+
+
 
 const User = mongoose.model("User", userSchema);
 export default User;

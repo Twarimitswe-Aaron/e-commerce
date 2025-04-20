@@ -1,26 +1,25 @@
 import { React, useState } from "react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-import styles from "../../styles/styles";
-import { Link,useNavigate } from "react-router-dom";
 import { RxAvatar } from "react-icons/rx";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { server } from "../../server";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-
-
-function SignUp() {
+function SignupPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [isVisible, setVisible] = useState(false);
   const [avatar, setAvatar] = useState(null);
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     if (password.length < 6) {
-      alert("Password must be at least 6 characters long");
+      toast.error("Password must be at least 6 characters long");
       return;
     }
 
@@ -33,14 +32,17 @@ const navigate = useNavigate();
 
     axios.post(`${server}/user/create-user`, newForm, config)
       .then(res => {
-        console.log(res);
-        if (res.data.success) {
-          navigate("/")
+        toast.success(res.data?.message || "Signup successful!");
+        if (res.data?.success) {
+          navigate("/login");
+          setAvatar(null);
+          setName("");
+          setEmail("");
+          setPassword("");
         }
-        
       })
       .catch(err => {
-        console.log(err);
+        toast.error(err.response?.data?.message || "Something went wrong!");
       });
   };
 
@@ -48,22 +50,20 @@ const navigate = useNavigate();
     const file = event.target.files[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        alert("Please upload a valid image file");
+        toast.error("Please upload a valid image file");
         return;
       }
       if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        alert("File size must be less than 2MB");
+        toast.error("File size must be less than 2MB");
         return;
       }
       setAvatar(file);
-      console.log("file is selected", file.name);
-    } else {
-      console.log("file is not selected");
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col py-12 sm:px-6 ls:px-8">
+      <ToastContainer />
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Sign up
@@ -73,7 +73,6 @@ const navigate = useNavigate();
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-      
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                 Full Name
@@ -81,6 +80,7 @@ const navigate = useNavigate();
               <input
                 type="text"
                 name="name"
+                id="name"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -95,6 +95,7 @@ const navigate = useNavigate();
               <input
                 type="email"
                 name="email"
+                id="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -110,6 +111,7 @@ const navigate = useNavigate();
                 <input
                   type={!isVisible ? "text" : "password"}
                   name="password"
+                  id="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -132,7 +134,7 @@ const navigate = useNavigate();
             </div>
 
             <div>
-              <label htmlFor="avatar" className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700">
                 Avatar
               </label>
               <div className="mt-2 flex items-center">
@@ -155,7 +157,6 @@ const navigate = useNavigate();
                   <input
                     type="file"
                     id="file-input"
-                    name="avatar"
                     className="sr-only"
                     onChange={handleFileChangeInput}
                     accept="image/*"
@@ -173,7 +174,7 @@ const navigate = useNavigate();
               </button>
             </div>
 
-            <div className={`${styles.normalFlex} w-full`}>
+            <div className="flex justify-between w-full">
               <h4>Already have an account?</h4>
               <Link to="/login" className="text-blue-600 pl-2">
                 Login
@@ -186,4 +187,4 @@ const navigate = useNavigate();
   );
 }
 
-export default SignUp;
+export default SignupPage;
