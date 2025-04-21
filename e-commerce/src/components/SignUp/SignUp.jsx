@@ -8,176 +8,230 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function SignupPage() {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const [isVisible, setVisible] = useState(false);
-  const [avatar, setAvatar] = useState(null);
+  const [formData, setFormData] = useState({
+    email: "",
+    name: "",
+    password: "",
+    avatar: null
+  });
+  const [isVisible, setIsVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters long");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // Validation
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      setIsLoading(false);
       return;
     }
 
-    const config = { headers: { "Content-Type": "multipart/form-data" }};
-    const newForm = new FormData();
-    newForm.append("file", avatar);
-    newForm.append("name", name);
-    newForm.append("email", email);
-    newForm.append("password", password);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast.error("Please enter a valid email address");
+      setIsLoading(false);
+      return;
+    }
 
-    axios.post(`${server}/user/create-user`, newForm, config)  
-      .then(res => {
-        toast.success(res.data?.message || "Signup successful!");
-        if (res.data?.success) {
-          navigate("/login");
-          setAvatar(null);
-          setName("");
-          setEmail("");
-          setPassword("");
-        }
-      })
-      .catch(err => {
-        toast.error(err.response?.data?.message || "Something went wrong!");
-      });
-  };
+    try {
+      const config = { headers: { "Content-Type": "multipart/form-data" }};
+      const newForm = new FormData();
+      
+      if (formData.avatar) newForm.append("file", formData.avatar);
+      newForm.append("name", formData.name);
+      newForm.append("email", formData.email);
+      newForm.append("password", formData.password);
 
-  const handleFileChangeInput = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Please upload a valid image file");
-        return;
+      const res = await axios.post(`${server}/user/create-user`, newForm, config);
+      
+      toast.success(res.data?.message || "Signup successful!");
+      if (res.data?.success) {
+        navigate("/login");
+        setFormData({
+          email: "",
+          name: "",
+          password: "",
+          avatar: null
+        });
       }
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        toast.error("File size must be less than 2MB");
-        return;
-      }
-      setAvatar(file);
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 
+                         err.response?.data?.error || 
+                         "Registration failed. Please try again.";
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (JPEG, PNG, etc.)");
+      return;
+    }
+
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image size must be less than 2MB");
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, avatar: file }));
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col py-12 sm:px-6 ls:px-8">
-      <ToastContainer />
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <ToastContainer position="top-center" autoClose={5000} />
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Sign up
+          Create your account
         </h2>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Name Field */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                 Full Name
               </label>
-              <input
-                type="text"
-                name="name"
-                id="name"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
+              <div className="mt-1">
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  required
+                  minLength={2}
+                  maxLength={50}
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
             </div>
 
+            {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
               </label>
-              <input
-                type="email"
-                name="email"
-                id="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
+              <div className="mt-1">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
             </div>
 
+            {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
               <div className="mt-1 relative">
                 <input
-                  type={!isVisible ? "text" : "password"}
-                  name="password"
                   id="password"
+                  name="password"
+                  type={isVisible ? "text" : "password"}
+                  autoComplete="new-password"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={6}
+                  value={formData.password}
+                  onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
-                {isVisible ? (
-                  <AiOutlineEye
-                    className="absolute right-2 top-2 cursor-pointer"
-                    size={25}
-                    onClick={() => setVisible(false)}
-                  />
-                ) : (
-                  <AiOutlineEyeInvisible
-                    className="absolute right-2 top-2 cursor-pointer"
-                    size={25}
-                    onClick={() => setVisible(true)}
-                  />
-                )}
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setIsVisible(!isVisible)}
+                  aria-label={isVisible ? "Hide password" : "Show password"}
+                >
+                  {isVisible ? (
+                    <AiOutlineEyeInvisible className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <AiOutlineEye className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Minimum 6 characters
+              </p>
             </div>
 
+            {/* Avatar Upload */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Avatar
+              <label htmlFor="avatar" className="block text-sm font-medium text-gray-700">
+                Profile Picture (Optional)
               </label>
-              <div className="mt-2 flex items-center">
-                <span className="inline-block h-8 w-8 rounded-full overflow-hidden">
-                  {avatar ? (
+              <div className="mt-2 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full overflow-hidden bg-gray-100">
+                  {formData.avatar ? (
                     <img
-                      src={URL.createObjectURL(avatar)}
-                      alt="avatar"
-                      className="w-full h-full rounded-full object-cover"
+                      src={URL.createObjectURL(formData.avatar)}
+                      alt="Profile preview"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <RxAvatar className="w-8 h-8" />
+                    <RxAvatar className="h-full w-full text-gray-400" />
                   )}
-                </span>
+                </div>
                 <label
-                  htmlFor="file-input"
-                  className="ml-5 flex items-center justify-center border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 cursor-pointer bg-white"
+                  htmlFor="avatar-upload"
+                  className="cursor-pointer rounded-md border border-gray-300 bg-white py-2 px-3 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
-                  <span>Upload a file</span>
+                  <span>Choose file</span>
                   <input
+                    id="avatar-upload"
+                    name="avatar"
                     type="file"
-                    id="file-input"
                     className="sr-only"
-                    onChange={handleFileChangeInput}
+                    onChange={handleFileChange}
                     accept="image/*"
                   />
                 </label>
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                JPG, PNG up to 2MB
+              </p>
             </div>
 
+            {/* Submit Button */}
             <div>
               <button
                 type="submit"
-                className="group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                disabled={isLoading}
+                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
               >
-                Signup
+                {isLoading ? "Creating account..." : "Sign up"}
               </button>
             </div>
 
-            <div className="flex justify-between w-full">
-              <h4>Already have an account?</h4>
-              <Link to="/login" className="text-blue-600 pl-2">
-                Login
+            {/* Login Link */}
+            <div className="text-center text-sm">
+              <span className="text-gray-600">Already have an account? </span>
+              <Link 
+                to="/login" 
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
+                Log in
               </Link>
             </div>
           </form>

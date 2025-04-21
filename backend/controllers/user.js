@@ -24,14 +24,13 @@ router.post("/create-user", upload.single("file"), async (req, res, next) => {
     console.log(userEmail, "user already exists");
     const filename = req.file.filename;
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const fileUrl = path.join(__dirname, "../uploads", filename);
-    console.log(fileUrl, "not got");
-    fs.unlink(fileUrl, (err) => {
-      if (err) {
-        console.log(err.message);
-        return res.status(400).json({ message: "Error deleting file" });
-      }
-    });
+
+   const fileUrl = path.join(__dirname, "../uploads", filename);
+
+
+  await fs.promises.unlink(fileUrl).catch(err => {
+  console.log("Error deleting file:", err.message);
+});
 
     return;
   }
@@ -81,30 +80,35 @@ const createActivationToken = (user) => {
   });
 };
 
-router.post(
-  "/activation/",
-  catchAsyncError(async (req, res, next) => {
-    const { activation_token } = req.body;
-    let decoded;
-    try {
-      decoded = jwt.verify(activation_token, process.env.ACTIVATION_SECRET);
-    } catch (error) {
-      console.log(error);
-      return next(new ErrorHandler("Invalid or expired token", 500));
-    }
-
-    if (!decoded) {
-      return next(new ErrorHandler("Your token is expired", 400));
-    }
+router.post("/activation/", catchAsyncError(async (req, res, next) => {
+  const { activation_token } = req.body;
+  
+  try {
+    const decoded = jwt.verify(activation_token, process.env.ACTIVATION_SECRET);
     const { email } = decoded;
-    const user = await User.findOneAndUpdate({ email }, { isActive: true });
-    res.status(201).json({
+    
+    const user = await User.findOne({ email });
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+    if (user.isActive) {
+      return next(new ErrorHandler("Account already activated", 400));
+    }
+    
+    user.isActive = true;
+    await user.save();
+    
+    res.status(200).json({
       success: true,
-      message: "User registered successfully",
+      message: "Account activated successfully"
     });
-    console.log(user, "user is activated");
-  })
-);
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return next(new ErrorHandler("Activation token expired", 401));
+    }
+    return next(new ErrorHandler("Invalid activation token", 401));
+  }
+}));
 
 router.post('/login-user', catchAsyncError(async (req,res,next)=>{
   const {email,password}=req.body;
