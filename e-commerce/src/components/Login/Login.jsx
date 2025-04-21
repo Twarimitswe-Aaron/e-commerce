@@ -18,7 +18,7 @@ function LoginPage() {
       await axios.post(`${server}/user/login-user`,{
         email,
         password
-      })
+      },{withCredentials:true})
       .then(res=>{
         toast.success("login successfull");
         Navigate("/")

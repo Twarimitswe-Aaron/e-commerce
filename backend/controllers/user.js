@@ -2,14 +2,14 @@ import express from "express";
 import path from "path";
 import { upload } from "../multer.js";
 import User from "../model/user.js";
-import ErrorHandler from "../middleware/error.js";
+import ErrorHandler from "../utils/ErrorHandler.js";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import jwt from "jsonwebtoken";
 import sendMail from "../utils/sendMail.js";
 import sendToken from "../utils/sendToken.js";
 import catchAsyncError from "../middleware/catchAsyncError.js";
-import crypto from "crypto";
+import  isAuthenticated  from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -117,9 +117,9 @@ router.post('/login-user', catchAsyncError(async (req,res,next)=>{
   const user =await User.findOne({email}).select("+password");
   if(!user){
     console.log(user,"user not found")
-   
     return next(new ErrorHandler("User not found",404));
   }
+  console.log("user found")
   const isPasswordValid= await user.comparePassword(password)
   if(!isPasswordValid){
     console.log(isPasswordValid,"password not matched")
@@ -129,7 +129,26 @@ router.post('/login-user', catchAsyncError(async (req,res,next)=>{
     console.log(user.isActive,"user not activated")
     return next(new ErrorHandler("Please activate your account",401));
   }
+  console.log("user is sent token")
   sendToken(user,200,res);
 }))
+
+router.get('/get-user', isAuthenticated, catchAsyncError(async (req,res,next)=>{
+ try {
+  const user = await User.findById(req.user.id)
+  if(!user){
+    return next(new ErrorHandler("User not found",404));
+  }
+  res.status(200).json({
+    success:true,
+    user
+  })
+  
+ } catch (error) {
+  console.log(error.message)
+  return next(new ErrorHandler(error.message,500))
+ }
+})
+)
 
 export default router;

@@ -23,14 +23,14 @@ function SignupPage() {
       return;
     }
 
-    const config = { headers: { "Content-Type": "multipart/form-data" } };
+    const config = { headers: { "Content-Type": "multipart/form-data" }};
     const newForm = new FormData();
     newForm.append("file", avatar);
     newForm.append("name", name);
     newForm.append("email", email);
     newForm.append("password", password);
 
-    axios.post(`${server}/user/create-user`, newForm, config)
+    axios.post(`${server}/user/create-user`, newForm, config)  
       .then(res => {
         toast.success(res.data?.message || "Signup successful!");
         if (res.data?.success) {

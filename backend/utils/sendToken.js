@@ -3,10 +3,10 @@ const sendToken=(user,statusCode,res,next)=>{
     const token=user.getJwtToken();
     const {id,name,email,avatar}=user;
     const options={
-        expires: new Date(new Date()+90*24*60*60*1000),
+        expires: new Date(Date.now()+90*24*60*60*1000),
         httpOnly:true,
         secure:process.env.NODE_ENV==="production",
-        sameSite:"Strict"
+        sameSite:"none"
     }
    try{
     res.status(statusCode).cookie("token",token,options).json({
