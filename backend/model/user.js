@@ -30,11 +30,11 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: [true, "Please enter the password"],
-        minLength: [8, "Password should be at least 8 characters"],
+        minLength: [6, "Password should be at least 6 characters"],
         select: false,
         validate: {
             validator: function(v) {
-                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(v);
+                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.{6,}$)/.test(v);
             },
             message: "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
         }
@@ -94,22 +94,28 @@ userSchema.index({ activationTokenExpire: 1 }, {
 
 // Middleware
 userSchema.pre("save", async function(next) {
+    // Debug: Confirm password is modified
+    console.log("[Debug] Password modified?", this.isModified("password"));
+
     if (!this.isModified("password")) return next();
     
     try {
-        const salt = await bcrypt.genSalt(12);
-        this.password = await bcrypt.hash(this.password, salt);
-        this.passwordChangedAt = Date.now() - 1000; // Ensure token is created after password change
+        // Trim and hash
+        this.password = await bcrypt.hash(this.password.trim(), 12);
         next();
     } catch (err) {
         next(err);
     }
 });
 
-// Instance methods
+
 userSchema.methods = {
     comparePassword: async function(candidatePassword) {
-        return await bcrypt.compare(candidatePassword, this.password);
+        // Debug: Log inputs
+        console.log("[Debug] Candidate:", candidatePassword);
+        console.log("[Debug] Stored Hash:", this.password);
+        
+        return await bcrypt.compare(candidatePassword.trim(), this.password);
     },
 
     getJwtToken: function() {
@@ -145,10 +151,10 @@ userSchema.methods = {
     }
 };
 
-// Static methods
+
 userSchema.statics = {
-    isEmailTaken: async function(email, excludeUserId) {
-        const user = await this.findOne({ email, _id: { $ne: excludeUserId } });
+    isEmailTaken: async function(email) {
+        const user = await this.findOne({ email});
         return !!user;
     }
 };

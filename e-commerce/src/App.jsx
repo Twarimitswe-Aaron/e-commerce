@@ -6,40 +6,17 @@ import axios from "axios";
 import { server } from "./server";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import store from "./redux/store"
+import {loadUser} from "./redux/actions/user"
 
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data } = await axios.get(`${server}/user/get-user`, { 
-          withCredentials: true 
-        });
-        
-        if (data.success) {
-          setIsAuthenticated(true);
-          toast.success(data.message || "Welcome back!");
-        }
-      } catch (err) {
-        const errorMessage = err.response?.data?.message || 
-                             "Session expired. Please log in again";
-        console.error("Authentication error:", errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    // Check if a token exists before making the request
-    const token = document.cookie.split('; ').find(row => row.startsWith('token='));
-    if (token) {
-      checkAuth();
-    } else {
-      setLoading(false); // Stop loading if no token is found
-    }
-  }, []);
+  useEffect(()=>{
+    store.dispatch(loadUser())
+  })
 
   if (loading) {
     return <Loader />;

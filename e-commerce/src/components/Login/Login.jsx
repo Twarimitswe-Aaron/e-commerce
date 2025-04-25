@@ -1,31 +1,108 @@
-import { React, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import axios from "axios";
 import { server } from "../../server";
 import { Link, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function LoginPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false
+    email: "",
+    password: "",
+    rememberMe: false,
   });
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [showPasswordErrors, setShowPasswordErrors] = useState(false);
+
+  // Load remembered email if exists
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem("rememberedEmail");
+    if (rememberedEmail) {
+      setFormData(prev => ({
+        ...prev,
+        email: rememberedEmail,
+        rememberMe: true
+      }));
+    }
+  }, []);
+
+  const validate = (name, value) => {
+    const errors = {};
+    if (name === "email") {
+      if (!value) {
+        errors.email = "• Email is required.";
+      } else if (!/\S+@\S+\.\S+/.test(value)) {
+        errors.email = "• Please enter a valid email address.";
+      } else {
+        errors.email = "";
+      }
+    }
+    if (name === "password") {
+      if (!value) {
+        errors.password = "• Password is required.";
+      } else {
+        let passwordErrors = "";
+        if (value.length < 6) {
+          passwordErrors += "• Password must be at least 6 characters.\n";
+        }
+        if (!/[A-Z]/.test(value)) {
+          passwordErrors += "• Password must include at least one uppercase letter.\n";
+        }
+        if (!/[0-9]/.test(value)) {
+          passwordErrors += "• Password must include at least one number.\n";
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+          passwordErrors += "• Password must include at least one special character.\n";
+        }
+        errors.password = passwordErrors.trim() || "";
+      }
+    }
+    return errors;
+  };
+
+  const handleFocus = (e) => {
+    const { name, value } = e.target;
+    const errors = validate(name, value);
+    setFormErrors(prev => ({
+      ...prev,
+      [name]: errors[name] || "",
+    }));
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const fieldValue = type === "checkbox" ? checked : value;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: fieldValue,
     }));
+
+    const errors = validate(name, fieldValue);
+    setFormErrors(prev => ({
+      ...prev,
+      [name]: errors[name] || "",
+    }));
+    setShowPasswordErrors(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setShowPasswordErrors(true);
+
+    const emailErrors = validate("email", formData.email);
+    const passwordErrors = validate("password", formData.password);
+    const errors = { ...emailErrors, ...passwordErrors };
+
+    if (Object.values(errors).some(error => error)) {
+      setFormErrors(errors);
+      return; 
+    }
+
     setIsLoading(true);
 
     try {
@@ -33,22 +110,36 @@ function LoginPage() {
         `${server}/user/login-user`,
         {
           email: formData.email,
-          password: formData.password
+          password: formData.password,
         },
         { withCredentials: true }
       );
 
-      toast.success("Login successful!");
-      navigate("/");
-      
-      // Store login info if "Remember Me" is checked
+      toast.success("Login successful!", {
+        autoClose: 500,
+        onClose: () => navigate('/'),
+         // Redirect after toast closes
+      })
+
       if (formData.rememberMe) {
-        localStorage.setItem('rememberedEmail', formData.email);
+        localStorage.setItem("rememberedEmail", formData.email);
       } else {
-        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem("rememberedEmail");
       }
+      setFormData({
+        email: "",
+        password: "",
+        rememberMe: false,
+      })
     } catch (err) {
-      const errorMessage = err.response?.data?.message || "Login failed. Please try again.";
+      let errorMessage = "Login failed. Please try again.";
+      if (err.response) {
+        if (err.response.status === 401) {
+          errorMessage = "Invalid credentials";
+        } else {
+          errorMessage = err.response.data?.message || errorMessage;
+        }
+      }
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -57,9 +148,11 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <ToastContainer position="top-center" autoClose={5000} />
+      
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Log in to your account
+          Log in
         </h2>
       </div>
 
@@ -76,12 +169,22 @@ function LoginPage() {
                   id="email"
                   name="email"
                   type="email"
-                  autoComplete="email"
+                  autoComplete="none"
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  onFocus={handleFocus}
+                  className={`appearance-none block w-full px-3 py-2 border ${
+                    formErrors.email
+                      ? "border-red-500"
+                      : formData.email
+                      ? "border-green-500"
+                      : "border-gray-300"
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 />
+                {formErrors.email && (
+                  <p className="text-red-500 text-sm">{formErrors.email}</p>
+                )}
               </div>
             </div>
 
@@ -100,7 +203,14 @@ function LoginPage() {
                   minLength={6}
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  onFocus={handleFocus}
+                  className={`appearance-none block w-full px-3 py-2 border ${
+                    formErrors.password
+                      ? "border-red-500"
+                      : formData.password
+                      ? "border-green-500"
+                      : "border-gray-300"
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 />
                 <button
                   type="button"
@@ -115,6 +225,15 @@ function LoginPage() {
                   )}
                 </button>
               </div>
+              {showPasswordErrors && formErrors.password && (
+                <ul className="mt-2 text-red-500 text-sm list-disc pl-5">
+                  {formErrors.password.split("\n").map((error, index) => (
+                    <li key={index} className="list-none">
+                      {error}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Remember Me & Forgot Password */}
@@ -152,7 +271,11 @@ function LoginPage() {
                   isLoading ? "opacity-70 cursor-not-allowed" : ""
                 }`}
               >
-                {isLoading ? "Logging in..." : "Log in"}
+                {isLoading ? (
+                  <div className="h-5 w-5 border-2 border-dotted border-white rounded-full animate-spin"></div>
+                ) : (
+                  "Login"
+                )}
               </button>
             </div>
 

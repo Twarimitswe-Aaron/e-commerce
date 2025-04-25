@@ -1,34 +1,36 @@
-import fs from "fs";
+import fs from "fs/promises"; // Use promise-based fs API
 import path from "path";
 import User from "../model/user.js";
 import { fileURLToPath } from "url";
 
+const cleanUpOrphanedFiles = async () => {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const uploadDir = path.join(__dirname, "../uploads");
 
-const cleanUpOraphanedFiles= async()=>{
-    const __filename=fileURLToPath(import.meta.url);
-    const __dirname=path.dirname(__filename);
-    const uploadDir=path.join(__dirname, "../uploads");
+    try {
+        
+        const files = await fs.readdir(uploadDir);
 
-    fs.readdir(uploadDir, async (err,files)=>{
-        if (err){
-            console.error("Error reading directory:", err);
-            return;
-        }
-        for (const file of files){
-            const user=await User.findOne({avatar:file});
-            if(!user){
-                const filePath=path.join(uploadDir,file);
-                fs.unlink(filePath, (err)=>{
-                    if (err){
-                        console.error("Error deleting file:", err);
+        
+        await Promise.all(
+            files.map(async (file) => {
+                const user = await User.findOne({ avatar: file });
+                if (!user) {
+                    const filePath = path.join(uploadDir, file);
+                    try {
+                        
+                        await fs.unlink(filePath);
+                        console.log(`Deleted orphaned file: ${file}`);
+                    } catch (error) {
+                        console.error(`Error deleting file ${file}:`, error.message);
                     }
-                    else{
-                        console.log(`File ${file} deleted successfully`);
-                    }
-                })
-            }
-        }
-    })
-}
+                }
+            })
+        );
+    } catch (error) {
+        console.error("Error cleaning up orphaned files:", error.message);
+    }
+};
 
-export default cleanUpOraphanedFiles;
+export default cleanUpOrphanedFiles;

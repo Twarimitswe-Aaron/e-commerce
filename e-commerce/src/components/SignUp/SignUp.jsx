@@ -1,5 +1,9 @@
 import { React, useState } from "react";
-import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import {
+  AiOutlineEye,
+  AiOutlineEyeInvisible,
+  AiOutlineLoading,
+} from "react-icons/ai";
 import { RxAvatar } from "react-icons/rx";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -12,59 +16,133 @@ function SignupPage() {
     email: "",
     name: "",
     password: "",
-    avatar: null
+    avatar: null,
   });
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const navigate = useNavigate();
 
+  const validate = (name, value) => {
+    const errors = {};
+    if (name === "email") {
+      if (!value) {
+        errors.email = "• Email is required.";
+      } else if (!/\S+@\S+\.\S+/.test(value)) {
+        errors.email = "• Please enter a valid email address.";
+      } else {
+        errors.email = ""; // Clear error if valid
+      }
+    }
+    if (name === "name") {
+      if (!value) {
+        errors.name = "• Name is required.";
+      } else if (!/^[a-zA-Z0-9 ]+$/.test(value)) {
+        errors.name = "• Name cannot contain special characters.";
+      } else {
+        errors.name = ""; // Clear error if valid
+      }
+    }
+    if (name === "password") {
+      if (!value) {
+        errors.password = "• Password is required.";
+      } else {
+        let passwordErrors = "";
+        if (value.length < 6) {
+          passwordErrors += "• Password must be at least 6 characters.\n";
+        }
+        if (!/[A-Z]/.test(value)) {
+          passwordErrors += "• Password must include at least one uppercase letter.\n";
+        }
+        if (!/[0-9]/.test(value)) {
+          passwordErrors += "• Password must include at least one number.\n";
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+          passwordErrors += "• Password must include at least one special character.\n";
+        }
+        errors.password = passwordErrors.trim() || "";
+      }
+    }
+    return errors;
+  };
+
   const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    const fieldValue = type === "checkbox" ? checked : value;
+
+    // Update form data
+    setFormData((prev) => ({ ...prev, [name]: fieldValue }));
+
+    // Validate the field and update errors
+    const errors = validate(name, fieldValue);
+    setFormErrors((prev) => ({
+      ...prev,
+      [name]: errors[name] || "", // Clear error if none
+    }));
+  };
+
+  const handleFocus = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const errors = validate(name, value);
+    setFormErrors((prev) => ({
+      ...prev,
+      [name]: errors[name] || "", // Clear error if none
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+  
+    const emailErrors = validate("email", formData.email);
+    const passwordErrors = validate("password", formData.password);
+    const errors = { ...emailErrors, ...passwordErrors };
+  
+    if (Object.keys(errors).some((key) => errors[key])) {
+      setFormErrors(errors);
+      return;
+    }
+    
+    if (!formData.avatar) {
+      toast.error("Please upload a profile picture");
+      return;
+    }
+  
     setIsLoading(true);
-
-    // Validation
-    if (formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      setIsLoading(false);
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      toast.error("Please enter a valid email address");
-      setIsLoading(false);
-      return;
-    }
-
+  
     try {
-      const config = { headers: { "Content-Type": "multipart/form-data" }};
+      const config = { headers: { 'Content-Type': 'multipart/form-data' } }; // Changed to multipart/form-data
       const newForm = new FormData();
-      
-      if (formData.avatar) newForm.append("file", formData.avatar);
+  
+      newForm.append("file", formData.avatar); // Changed from "file" to "avatar" to match common backend expectations
       newForm.append("name", formData.name);
       newForm.append("email", formData.email);
       newForm.append("password", formData.password);
-
-      const res = await axios.post(`${server}/user/create-user`, newForm, config);
-      
-      toast.success(res.data?.message || "Signup successful!");
+  
+      const res = await axios.post(
+        `${server}/user/create-user`,
+        newForm,
+        config
+      );
+  
+      toast.success(
+        res.data?.message || "Go to your email to activate your account"
+      );
       if (res.data?.success) {
-        navigate("/login");
+        setTimeout(()=>{
+          navigate("/login")
+        },3000);
         setFormData({
           email: "",
           name: "",
           password: "",
-          avatar: null
+          avatar: null,
         });
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 
-                         err.response?.data?.error || 
-                         "Registration failed. Please try again.";
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Registration failed. Please try again.";
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -87,7 +165,7 @@ function SignupPage() {
       return;
     }
 
-    setFormData(prev => ({ ...prev, avatar: file }));
+    setFormData((prev) => ({ ...prev, avatar: file }));
   };
 
   return (
@@ -104,7 +182,10 @@ function SignupPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Full Name
               </label>
               <div className="mt-1">
@@ -117,14 +198,26 @@ function SignupPage() {
                   maxLength={50}
                   value={formData.name}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className={`appearance-none block w-full px-3 py-2 border ${
+                    formErrors.name
+                      ? "border-red-500"
+                      : formData.name
+                      ? "border-green-500"
+                      : "border-gray-300"
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 />
+                {formErrors.name && (
+                  <p className="text-red-500 text-sm">{formErrors.name}</p>
+                )}
               </div>
             </div>
 
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email address
               </label>
               <div className="mt-1">
@@ -136,14 +229,27 @@ function SignupPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  onFocus={handleFocus}
+                  className={`appearance-none block w-full px-3 py-2 border ${
+                    formErrors.email
+                      ? "border-red-500"
+                      : formData.email
+                      ? "border-green-500"
+                      : "border-gray-300"
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 />
+                {formErrors.email && (
+                  <p className="mt-2 text-red-400 text-sm">{formErrors.email}</p>
+                )}
               </div>
             </div>
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <div className="mt-1 relative">
@@ -156,8 +262,16 @@ function SignupPage() {
                   minLength={6}
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  onFocus={handleFocus}
+                  className={`appearance-none block w-full px-3 py-2 border ${
+                    formErrors.password
+                      ? "border-red-500"
+                      : formData.password
+                      ? "border-green-500"
+                      : "border-gray-300"
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 />
+                
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
@@ -171,15 +285,24 @@ function SignupPage() {
                   )}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Minimum 6 characters
-              </p>
+             {formErrors.password && (
+              <ul className="mt-2 text-red-500 text-sm list-disc pl-5">
+                {formErrors.password.split("\n").map((error, index) => ( 
+                  <li className="list-none" key={index}>
+                    {error}
+                  </li>
+                 ))}
+              </ul>
+             )}
             </div>
 
             {/* Avatar Upload */}
             <div>
-              <label htmlFor="avatar" className="block text-sm font-medium text-gray-700">
-                Profile Picture (Optional)
+              <label
+                htmlFor="avatar"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Profile Picture (Compulsory)
               </label>
               <div className="mt-2 flex items-center gap-4">
                 <div className="h-12 w-12 rounded-full overflow-hidden bg-gray-100">
@@ -208,9 +331,7 @@ function SignupPage() {
                   />
                 </label>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
-                JPG, PNG up to 2MB
-              </p>
+              <p className="mt-1 text-xs text-gray-500">JPG, PNG up to 2MB</p>
             </div>
 
             {/* Submit Button */}
@@ -218,18 +339,24 @@ function SignupPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer ${
+                  isLoading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
               >
-                {isLoading ? "Creating account..." : "Sign up"}
+                {isLoading ? (
+                  <div className="h-5 w-5 border-2 border-dotted border-white rounded-full animate-spin"></div>
+                ) : (
+                  "Sign up"
+                )}
               </button>
             </div>
 
             {/* Login Link */}
             <div className="text-center text-sm">
               <span className="text-gray-600">Already have an account? </span>
-              <Link 
-                to="/login" 
-                className="font-medium text-blue-600 hover:text-blue-500"
+              <Link
+                to="/login"
+                className="font-medium text-blue-600 hover:text-blue-500 cursor-pointer"
               >
                 Log in
               </Link>

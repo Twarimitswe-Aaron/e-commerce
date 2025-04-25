@@ -1,7 +1,17 @@
 import multer from "multer";
+import ErrorHandler from "./utils/ErrorHandler.js";
+import fs from "fs";
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
+
+        if(!file){
+            return cb(new ErrorHandler("Please upload an image"), false);
+        }
+        
+        if(!fs.existsSync("uploads")){
+            fs.mkdirSync("uploads")
+        }
         cb(null, "uploads/");
     },
     filename: function (req, file, cb) {
