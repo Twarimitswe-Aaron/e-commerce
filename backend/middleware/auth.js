@@ -3,7 +3,7 @@ import User from "../model/user.js";
 import catchAsyncError from "./catchAsyncError.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 
-const isAuthenticated = catchAsyncError(async (req, res, next) => {
+export const isAuthenticated = catchAsyncError(async (req, res, next) => {
   const { token } = req.cookies;
   
   if (!token) {
@@ -28,4 +28,3 @@ const isAuthenticated = catchAsyncError(async (req, res, next) => {
   }
 });
 
-export default isAuthenticated;

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { server } from "../../server";
 
-const ActivationPage = () => {
+const Activation = () => {
   const { activation_token } = useParams();
   const [error, setError] = useState(false);
 
@@ -55,4 +55,4 @@ const ActivationPage = () => {
   );
 };
 
-export default ActivationPage;
+export default Activation;
