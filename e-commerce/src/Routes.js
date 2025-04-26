@@ -1,8 +1,8 @@
-import LoginPage from "./components/Login/Login.jsx";
-import SignupPage from "./components/SignUp/SignUp.jsx";
-import ActivationPage from "./components/Activation/Activation.jsx";
-import HomePage from "./components/Home/Home.jsx";
-import Loader from "./components/Loader/Loader.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import SignupPage from "./pages/SignUpPage.jsx";
+import ActivationPage from "./pages/ActivationPage.jsx";
+import HomePage from "./pages/HomePage.jsx"
+import Loader from "./pages/LoaderPage.jsx";
 
 export {
     LoginPage,

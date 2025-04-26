@@ -103,41 +103,43 @@ function LoginPage() {
       return; 
     }
 
-    setIsLoading(true);
+    
+
+ 
 
     try {
-      const { data } = await axios.post(
+      setIsLoading(true);
+      await axios
+      .post(
         `${server}/user/login-user`,
         {
-          email: formData.email,
-          password: formData.password,
+          email:formData.email,
+          password:formData.password,
         },
         { withCredentials: true }
-      );
-
-      toast.success("Login successful!", {
-        autoClose: 500,
-        onClose: () => navigate('/'),
-         // Redirect after toast closes
+      )
+      .then((res) => {
+        toast.success("Login Success!");
+        navigate("/");
+        window.location.reload(true); 
       })
+      .catch((err) => {
+        toast.error(err.response.data.message);
+      });
 
       if (formData.rememberMe) {
         localStorage.setItem("rememberedEmail", formData.email);
       } else {
         localStorage.removeItem("rememberedEmail");
       }
-      setFormData({
-        email: "",
-        password: "",
-        rememberMe: false,
-      })
+      
     } catch (err) {
       let errorMessage = "Login failed. Please try again.";
       if (err.response) {
         if (err.response.status === 401) {
           errorMessage = "Invalid credentials";
         } else {
-          errorMessage = err.response.data?.message || errorMessage;
+          errorMessage = err.response.data?.message
         }
       }
       toast.error(errorMessage);

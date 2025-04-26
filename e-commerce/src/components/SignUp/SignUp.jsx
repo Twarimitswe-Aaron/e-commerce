@@ -11,7 +11,7 @@ import { server } from "../../server";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-function SignupPage() {
+function SignUp() {
   const [formData, setFormData] = useState({
     email: "",
     name: "",
@@ -44,6 +44,7 @@ function SignupPage() {
       }
     }
     if (name === "password") {
+      
       if (!value) {
         errors.password = "• Password is required.";
       } else {
@@ -107,47 +108,37 @@ function SignupPage() {
       return;
     }
   
-    setIsLoading(true);
+    
   
     try {
-      const config = { headers: { 'Content-Type': 'multipart/form-data' } }; // Changed to multipart/form-data
-      const newForm = new FormData();
+      setIsLoading(true);
+      const submitData = new FormData();
+      submitData.append("name", formData.name);
+      submitData.append("email", formData.email);
+      submitData.append("password", formData.password);
+      submitData.append("file", formData.avatar);
+      
+      const res = await axios.post(`${server}/user/create-user`, submitData, {
+        withCredentials: true,
+      });
   
-      newForm.append("file", formData.avatar); // Changed from "file" to "avatar" to match common backend expectations
-      newForm.append("name", formData.name);
-      newForm.append("email", formData.email);
-      newForm.append("password", formData.password);
+      toast.success(res.data.message);
+      
+      setFormData({
+        email: "",
+        name: "",
+        password: "",
+        avatar: null,
+      });
   
-      const res = await axios.post(
-        `${server}/user/create-user`,
-        newForm,
-        config
-      );
-  
-      toast.success(
-        res.data?.message || "Go to your email to activate your account"
-      );
-      if (res.data?.success) {
-        setTimeout(()=>{
-          navigate("/login")
-        },3000);
-        setFormData({
-          email: "",
-          name: "",
-          password: "",
-          avatar: null,
-        });
-      }
-    } catch (err) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        "Registration failed. Please try again.";
-      toast.error(errorMessage);
-    } finally {
+    } catch (error) {
+      setIsLoading(false);
+      toast.error(error.response?.data?.message || "Signup failed");
+    }finally{
       setIsLoading(false);
     }
-  };
+  }
+  
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -368,4 +359,4 @@ function SignupPage() {
   );
 }
 
-export default SignupPage;
+export default SignUp;

@@ -1,26 +1,28 @@
 import "./App.css";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
-import { LoginPage, SignupPage, ActivationPage, HomePage, Loader } from "./Routes";
+import {
+  LoginPage,
+  SignupPage,
+  ActivationPage,
+  HomePage,
+  Loader,
+} from "./Routes";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { server } from "./server";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer} from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import store from "./redux/store"
-import {loadUser} from "./redux/actions/user"
-
+import Store from "./redux/store";
+import { loadUser } from "./redux/actions/user";
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    Store.dispatch(loadUser());
+  }, []);
 
-  useEffect(()=>{
-    store.dispatch(loadUser())
-  })
-
-  if (loading) {
-    return <Loader />;
-  }
+  // if (loading) {
+  //   return <Loader />;
+  // }
 
   return (
     <>
@@ -38,22 +40,13 @@ function App() {
       />
       <BrowserRouter>
         <Routes>
-          <Route 
-            path="/signup" 
-            element={!isAuthenticated ? <SignupPage /> : <Navigate to="/" />} 
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/activation/:activation_token"
+            element={<ActivationPage />}
           />
-          <Route 
-            path="/login" 
-            element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} 
-          />
-          <Route 
-            path="/activation/:activation_token" 
-            element={<ActivationPage />} 
-          />
-          <Route 
-            path="/" 
-            element={isAuthenticated ? <HomePage /> : <Navigate to="/login" />} 
-          />
+          <Route path="/" element={<HomePage />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
